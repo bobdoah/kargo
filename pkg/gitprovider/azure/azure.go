@@ -185,7 +185,7 @@ func (p *provider) ListPullRequests(
 func (p *provider) MergePullRequest(
 	ctx context.Context,
 	id int64,
-	mergeMethod string,
+	mergeMethod gitprovider.MergeMethod,
 ) (*gitprovider.PullRequest, bool, error) {
 	var pr *gitprovider.PullRequest
 
@@ -245,11 +245,11 @@ func (p *provider) MergePullRequest(
 		// Azure DevOps merge strategies
 		var strategy adogit.GitPullRequestMergeStrategy
 		switch mergeMethod {
-		case "merge":
+		case gitprovider.MergeMethodMerge:
 			strategy = adogit.GitPullRequestMergeStrategyValues.NoFastForward
-		case "squash":
+		case gitprovider.MergeMethodSquash:
 			strategy = adogit.GitPullRequestMergeStrategyValues.Squash
-		case "rebase":
+		case gitprovider.MergeMethodRebase:
 			strategy = adogit.GitPullRequestMergeStrategyValues.Rebase
 		default:
 			strategy = adogit.GitPullRequestMergeStrategyValues.NoFastForward

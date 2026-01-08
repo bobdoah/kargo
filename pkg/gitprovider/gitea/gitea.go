@@ -280,7 +280,7 @@ func (p *provider) ListPullRequests(
 func (p *provider) MergePullRequest(
 	ctx context.Context,
 	id int64,
-	mergeMethod string,
+	mergeMethod gitprovider.MergeMethod,
 ) (*gitprovider.PullRequest, bool, error) {
 	giteaPR, _, err := p.client.GetPullRequests(ctx, p.owner, p.repo, int(id))
 	if err != nil {
@@ -308,11 +308,11 @@ func (p *provider) MergePullRequest(
 		// Convert to Gitea's MergeStyle type
 		var style gitea.MergeStyle
 		switch mergeMethod {
-		case "merge":
+		case gitprovider.MergeMethodMerge:
 			style = gitea.MergeStyleMerge
-		case "squash":
+		case gitprovider.MergeMethodSquash:
 			style = gitea.MergeStyleSquash
-		case "rebase":
+		case gitprovider.MergeMethodRebase:
 			style = gitea.MergeStyleRebase
 		default:
 			style = gitea.MergeStyleMerge

@@ -121,10 +121,10 @@ func (g *gitPRMerger) run(
 	var merged bool
 	const maxMergeAttempts = 3
 
-	// Convert MergeMethod to string
-	mergeMethod := ""
+	// Convert builtin.MergeMethod to gitprovider.MergeMethod
+	var mergeMethod gitprovider.MergeMethod
 	if cfg.MergeMethod != nil {
-		mergeMethod = string(*cfg.MergeMethod)
+		mergeMethod = gitprovider.MergeMethod(*cfg.MergeMethod)
 	}
 
 	for i := range maxMergeAttempts {

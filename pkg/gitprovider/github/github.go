@@ -299,7 +299,7 @@ func (p *provider) ListPullRequests(
 func (p *provider) MergePullRequest(
 	ctx context.Context,
 	id int64,
-	mergeMethod string,
+	mergeMethod gitprovider.MergeMethod,
 ) (*gitprovider.PullRequest, bool, error) {
 	ghPR, _, err := p.client.GetPullRequests(ctx, p.owner, p.repo, int(id))
 	if err != nil {
@@ -324,7 +324,7 @@ func (p *provider) MergePullRequest(
 	// Merge the PR
 	opts := &github.PullRequestOptions{}
 	if mergeMethod != "" {
-		opts.MergeMethod = mergeMethod
+		opts.MergeMethod = string(mergeMethod)
 	}
 	mergeResult, _, err := p.client.MergePullRequest(
 		ctx,
