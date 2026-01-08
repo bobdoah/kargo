@@ -120,9 +120,16 @@ func (g *gitPRMerger) run(
 	var mergedPR *gitprovider.PullRequest
 	var merged bool
 	const maxMergeAttempts = 3
+
+	// Convert MergeMethod to string
+	mergeMethod := ""
+	if cfg.MergeMethod != nil {
+		mergeMethod = string(*cfg.MergeMethod)
+	}
+
 	for i := range maxMergeAttempts {
 		if mergedPR, merged, err = gitProv.MergePullRequest(
-			ctx, cfg.PRNumber,
+			ctx, cfg.PRNumber, mergeMethod,
 		); err != nil {
 			// Only actual errors (auth, network, invalid PR, closed but not merged,
 			// etc.) reach here

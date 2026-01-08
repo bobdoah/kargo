@@ -209,6 +209,7 @@ func (p *provider) ListPullRequests(
 func (p *provider) MergePullRequest(
 	_ context.Context,
 	id int64,
+	mergeMethod string,
 ) (*gitprovider.PullRequest, bool, error) {
 	glMR, _, err := p.client.GetMergeRequest(p.projectName, id, nil)
 	if err != nil {
@@ -231,8 +232,17 @@ func (p *provider) MergePullRequest(
 	}
 
 	// Merge the MR
+	opts := &gitlab.AcceptMergeRequestOptions{}
+	if mergeMethod != "" {
+		// GitLab uses "merge_commit" instead of "merge"
+		method := mergeMethod
+		if method == "merge" {
+			method = "merge_commit"
+		}
+		opts.MergeMethod = &method
+	}
 	updatedMR, _, err := p.client.AcceptMergeRequest(
-		p.projectName, id, &gitlab.AcceptMergeRequestOptions{},
+		p.projectName, id, opts,
 	)
 	if err != nil {
 		return nil, false, fmt.Errorf("error merging merge request %d: %w", id, err)

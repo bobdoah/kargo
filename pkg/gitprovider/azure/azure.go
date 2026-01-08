@@ -185,6 +185,7 @@ func (p *provider) ListPullRequests(
 func (p *provider) MergePullRequest(
 	ctx context.Context,
 	id int64,
+	mergeMethod string,
 ) (*gitprovider.PullRequest, bool, error) {
 	var pr *gitprovider.PullRequest
 
@@ -233,17 +234,35 @@ func (p *provider) MergePullRequest(
 	}
 
 	// Try to merge
+	prUpdate := &adogit.GitPullRequest{
+		Status: ptr.To(adogit.PullRequestStatusValues.Completed),
+		// LastMergeSourceCommit ensures merge is based on the exact commit we validated.
+		// If the PR was amended between our validation and merge attempt, Azure DevOps
+		// will reject the merge operation, preventing race conditions.
+		LastMergeSourceCommit: adoPR.LastMergeSourceCommit,
+	}
+	if mergeMethod != "" {
+		// Azure DevOps merge strategies
+		var strategy adogit.GitPullRequestMergeStrategy
+		switch mergeMethod {
+		case "merge":
+			strategy = adogit.GitPullRequestMergeStrategyValues.NoFastForward
+		case "squash":
+			strategy = adogit.GitPullRequestMergeStrategyValues.Squash
+		case "rebase":
+			strategy = adogit.GitPullRequestMergeStrategyValues.Rebase
+		default:
+			strategy = adogit.GitPullRequestMergeStrategyValues.NoFastForward
+		}
+		prUpdate.CompletionOptions = &adogit.GitPullRequestCompletionOptions{
+			MergeStrategy: &strategy,
+		}
+	}
 	updatedPR, err := gitClient.UpdatePullRequest(ctx, adogit.UpdatePullRequestArgs{
-		Project:       &p.project,
-		RepositoryId:  &p.repo,
-		PullRequestId: ptr.To(int(id)),
-		GitPullRequestToUpdate: &adogit.GitPullRequest{
-			Status: ptr.To(adogit.PullRequestStatusValues.Completed),
-			// LastMergeSourceCommit ensures merge is based on the exact commit we validated.
-			// If the PR was amended between our validation and merge attempt, Azure DevOps
-			// will reject the merge operation, preventing race conditions.
-			LastMergeSourceCommit: adoPR.LastMergeSourceCommit,
-		},
+		Project:              &p.project,
+		RepositoryId:         &p.repo,
+		PullRequestId:        ptr.To(int(id)),
+		GitPullRequestToUpdate: prUpdate,
 	})
 	if err != nil {
 		return nil, false, fmt.Errorf("error merging pull request %d: %w", id, err)

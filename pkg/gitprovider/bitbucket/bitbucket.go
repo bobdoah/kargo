@@ -309,6 +309,7 @@ func (p *provider) ListPullRequests(
 func (p *provider) MergePullRequest(
 	_ context.Context,
 	id int64,
+	mergeMethod string,
 ) (*gitprovider.PullRequest, bool, error) {
 	// Get the PR to check its state
 	prOpts := &bitbucket.PullRequestsOptions{
@@ -360,6 +361,23 @@ func (p *provider) MergePullRequest(
 		Owner:    p.owner,
 		RepoSlug: p.repoSlug,
 		ID:       strconv.FormatInt(id, 10),
+	}
+	// Set merge strategy if specified
+	if mergeMethod != "" {
+		// Bitbucket uses different names for merge strategies
+		var strategy string
+		switch mergeMethod {
+		case "merge":
+			strategy = "merge_commit"
+		case "squash":
+			strategy = "squash"
+		case "rebase":
+			// Bitbucket uses "fast_forward" for rebase-like behavior
+			strategy = "fast_forward"
+		default:
+			strategy = "merge_commit"
+		}
+		mergeOpts.MergeStrategy = strategy
 	}
 
 	// Perform the merge
