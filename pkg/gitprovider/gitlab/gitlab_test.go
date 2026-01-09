@@ -175,6 +175,7 @@ func TestMergePullRequest(t *testing.T) {
 		name         string
 		mockClient   *mockGitLabClient
 		id           int64
+		mergeMethod  gitprovider.MergeMethod
 		expectErr    bool
 		expectMerged bool
 		expectPR     bool
@@ -347,6 +348,121 @@ func TestMergePullRequest(t *testing.T) {
 				return mc
 			}(),
 			id:           789,
+			mergeMethod:  "",
+			expectMerged: true,
+			expectPR:     true,
+		},
+		{
+			name: "successful squash merge",
+			mockClient: func() *mockGitLabClient {
+				mc := &mockGitLabClient{}
+				mc.getMRFunc = func(_ any, _ int64, _ *gitlab.GetMergeRequestsOptions,
+					_ ...gitlab.RequestOptionFunc,
+				) (*gitlab.MergeRequest, *gitlab.Response, error) {
+					return &gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							IID:                 100,
+							State:               "opened",
+							DetailedMergeStatus: "mergeable",
+							WebURL:              "https://gitlab.com/group/project/-/merge_requests/100",
+						},
+					}, &gitlab.Response{}, nil
+				}
+				mc.acceptMRFunc = func(_ any, _ int64, opts *gitlab.AcceptMergeRequestOptions,
+					_ ...gitlab.RequestOptionFunc,
+				) (*gitlab.MergeRequest, *gitlab.Response, error) {
+					// Verify squash merge method is passed correctly
+					require.NotNil(t, opts.MergeMethod)
+					require.Equal(t, "squash", *opts.MergeMethod)
+					return &gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							IID:            100,
+							MergeCommitSHA: "squash_sha100",
+							State:          "merged",
+							WebURL:         "https://gitlab.com/group/project/-/merge_requests/100",
+						},
+					}, &gitlab.Response{}, nil
+				}
+				return mc
+			}(),
+			id:           100,
+			mergeMethod:  gitprovider.MergeMethodSquash,
+			expectMerged: true,
+			expectPR:     true,
+		},
+		{
+			name: "successful merge with merge_commit conversion",
+			mockClient: func() *mockGitLabClient {
+				mc := &mockGitLabClient{}
+				mc.getMRFunc = func(_ any, _ int64, _ *gitlab.GetMergeRequestsOptions,
+					_ ...gitlab.RequestOptionFunc,
+				) (*gitlab.MergeRequest, *gitlab.Response, error) {
+					return &gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							IID:                 200,
+							State:               "opened",
+							DetailedMergeStatus: "mergeable",
+							WebURL:              "https://gitlab.com/group/project/-/merge_requests/200",
+						},
+					}, &gitlab.Response{}, nil
+				}
+				mc.acceptMRFunc = func(_ any, _ int64, opts *gitlab.AcceptMergeRequestOptions,
+					_ ...gitlab.RequestOptionFunc,
+				) (*gitlab.MergeRequest, *gitlab.Response, error) {
+					// Verify "merge" is converted to "merge_commit" for GitLab
+					require.NotNil(t, opts.MergeMethod)
+					require.Equal(t, "merge_commit", *opts.MergeMethod)
+					return &gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							IID:            200,
+							MergeCommitSHA: "merge_commit_sha200",
+							State:          "merged",
+							WebURL:         "https://gitlab.com/group/project/-/merge_requests/200",
+						},
+					}, &gitlab.Response{}, nil
+				}
+				return mc
+			}(),
+			id:           200,
+			mergeMethod:  gitprovider.MergeMethodMerge,
+			expectMerged: true,
+			expectPR:     true,
+		},
+		{
+			name: "successful rebase merge",
+			mockClient: func() *mockGitLabClient {
+				mc := &mockGitLabClient{}
+				mc.getMRFunc = func(_ any, _ int64, _ *gitlab.GetMergeRequestsOptions,
+					_ ...gitlab.RequestOptionFunc,
+				) (*gitlab.MergeRequest, *gitlab.Response, error) {
+					return &gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							IID:                 300,
+							State:               "opened",
+							DetailedMergeStatus: "mergeable",
+							WebURL:              "https://gitlab.com/group/project/-/merge_requests/300",
+						},
+					}, &gitlab.Response{}, nil
+				}
+				mc.acceptMRFunc = func(_ any, _ int64, opts *gitlab.AcceptMergeRequestOptions,
+					_ ...gitlab.RequestOptionFunc,
+				) (*gitlab.MergeRequest, *gitlab.Response, error) {
+					// Verify rebase merge method is passed correctly
+					require.NotNil(t, opts.MergeMethod)
+					require.Equal(t, "rebase", *opts.MergeMethod)
+					return &gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							IID:            300,
+							MergeCommitSHA: "rebase_sha300",
+							State:          "merged",
+							WebURL:         "https://gitlab.com/group/project/-/merge_requests/300",
+						},
+					}, &gitlab.Response{}, nil
+				}
+				return mc
+			}(),
+			id:           300,
+			mergeMethod:  gitprovider.MergeMethodRebase,
 			expectMerged: true,
 			expectPR:     true,
 		},
@@ -359,7 +475,7 @@ func TestMergePullRequest(t *testing.T) {
 				client:      tc.mockClient,
 			}
 
-			pr, merged, err := g.MergePullRequest(context.Background(), tc.id)
+			pr, merged, err := g.MergePullRequest(context.Background(), tc.id, tc.mergeMethod)
 
 			if tc.expectErr {
 				require.Error(t, err)
