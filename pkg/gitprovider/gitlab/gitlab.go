@@ -208,15 +208,14 @@ func (p *provider) ListPullRequests(
 // MergePullRequest implements gitprovider.Interface.
 func (p *provider) MergePullRequest(
 	_ context.Context,
-	id int64,
-	mergeMethod gitprovider.MergeMethod,
+	opts *gitprovider.MergePullRequestOpts,
 ) (*gitprovider.PullRequest, bool, error) {
-	glMR, _, err := p.client.GetMergeRequest(p.projectName, id, nil)
+	glMR, _, err := p.client.GetMergeRequest(p.projectName, opts.Number, nil)
 	if err != nil {
-		return nil, false, fmt.Errorf("error getting merge request %d: %w", id, err)
+		return nil, false, fmt.Errorf("error getting merge request %d: %w", opts.Number, err)
 	}
 	if glMR == nil {
-		return nil, false, fmt.Errorf("merge request %d not found", id)
+		return nil, false, fmt.Errorf("merge request %d not found", opts.Number)
 	}
 
 	switch {
@@ -225,27 +224,27 @@ func (p *provider) MergePullRequest(
 		return &pr, true, nil
 
 	case glMR.State != "opened":
-		return nil, false, fmt.Errorf("pull request %d is closed but not merged", id)
+		return nil, false, fmt.Errorf("pull request %d is closed but not merged", opts.Number)
 
 	case glMR.Draft || glMR.DetailedMergeStatus != "mergeable":
 		return nil, false, nil
 	}
 
 	// Merge the MR
-	opts := &gitlab.AcceptMergeRequestOptions{}
-	if mergeMethod != "" {
+	mrOpts := &gitlab.AcceptMergeRequestOptions{}
+	if opts.MergeMethod != "" {
 		// GitLab uses "merge_commit" instead of "merge"
-		method := string(mergeMethod)
+		method := string(opts.MergeMethod)
 		if method == "merge" {
 			method = "merge_commit"
 		}
-		opts.MergeMethod = &method
+		mrOpts.MergeMethod = &method
 	}
 	updatedMR, _, err := p.client.AcceptMergeRequest(
-		p.projectName, id, opts,
+		p.projectName, opts.Number, mrOpts,
 	)
 	if err != nil {
-		return nil, false, fmt.Errorf("error merging merge request %d: %w", id, err)
+		return nil, false, fmt.Errorf("error merging merge request %d: %w", opts.Number, err)
 	}
 	if updatedMR == nil {
 		return nil, false, fmt.Errorf("unexpected nil merge request after merge")
