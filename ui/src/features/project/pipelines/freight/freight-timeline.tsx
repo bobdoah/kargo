@@ -53,7 +53,7 @@ export const FreightTimeline = (props: { freights: Freight[]; project: string })
   const filteredFreights: (Freight & {
     count?: number;
   })[] = useMemo(() => {
-    let filtered = props.freights?.sort((a, b) => {
+    let filtered = [...(props.freights || [])].sort((a, b) => {
       const t1 = timestampDate(a?.metadata?.creationTimestamp);
 
       const t2 = timestampDate(b?.metadata?.creationTimestamp);
@@ -199,7 +199,10 @@ export const FreightTimeline = (props: { freights: Freight[]; project: string })
             }
           }}
         >
-          <div className='flex gap-1 relative right-0' ref={freightListStyleRef}>
+          <div
+            className='flex gap-1 relative right-0 transition-[right] duration-300 ease-out'
+            ref={freightListStyleRef}
+          >
             {filteredFreights.map((freight) => {
               const freightSoakTime = soakTime?.[freight?.metadata?.name || ''];
 

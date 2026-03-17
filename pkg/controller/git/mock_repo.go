@@ -13,9 +13,11 @@ type MockRepo struct {
 	CommitFn                  func(message string, opts *CommitOptions) error
 	CreateChildBranchFn       func(branch string) error
 	CreateOrphanedBranchFn    func(branch string) error
+	CreateTagFn               func(tag, msg string, opts *TagOptions) error
 	CurrentBranchFn           func() (string, error)
 	DeleteBranchFn            func(branch string) error
 	DirFn                     func() string
+	FetchFn                   func(opts *FetchOptions) error
 	HasDiffsFn                func() (bool, error)
 	HomeDirFn                 func() string
 	GetDiffPathsForCommitIDFn func(commitID string) ([]string, error)
@@ -75,6 +77,10 @@ func (m *MockRepo) CreateOrphanedBranch(branch string) error {
 	return m.CreateOrphanedBranchFn(branch)
 }
 
+func (m *MockRepo) CreateTag(tag, msg string, opts *TagOptions) error {
+	return m.CreateTagFn(tag, msg, opts)
+}
+
 func (m *MockRepo) CurrentBranch() (string, error) {
 	return m.CurrentBranchFn()
 }
@@ -85,6 +91,10 @@ func (m *MockRepo) DeleteBranch(branch string) error {
 
 func (m *MockRepo) Dir() string {
 	return m.DirFn()
+}
+
+func (m *MockRepo) Fetch(opts *FetchOptions) error {
+	return m.FetchFn(opts)
 }
 
 func (m *MockRepo) HasDiffs() (bool, error) {
